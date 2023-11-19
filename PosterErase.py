@@ -15,20 +15,31 @@ logger = get_logger(__name__)
 JsonDict = Dict[str, Any]
 
 
-_DESCRIPTION = """
+_DESCRIPTION = """\
+PosterErase is a new dataset, which contains 60K high-resolution posters with texts and is more challenging for the text erasing task.
 """
 
 _CITATION = """
+@inproceedings{jiang2022self,
+  title={Self-supervised text erasing with controllable image synthesis},
+  author={Jiang, Gangwei and Wang, Shiyao and Ge, Tiezheng and Jiang, Yuning and Wei, Ying and Lian, Defu},
+  booktitle={Proceedings of the 30th ACM International Conference on Multimedia},
+  pages={1973--1983},
+  year={2022}
+}
 """
 
-_HOMEPAGE = """
+_HOMEPAGE = "https://github.com/alimama-creative/Self-supervised-Text-Erasing"
+
+_LICENSE = """\
+The dataset is distributed under the CC BY-SA 4.0 license.
 """
 
-_LICENSE = """
-"""
-
-_URL_BASE = "https://huggingface.co/datasets/shunk031/PosterErase-private/resolve/main/erase_{}.zip"
-_URLS = [_URL_BASE.format(i) for i in range(1, 7)]
+_URL_BASE = (
+    "https://huggingface.co/datasets/shunk031/PosterErase-private/resolve/main/{}"
+)
+_ZIP_FILES = [f"erase_{i}.zip" for i in range(1, 7)]
+_URLS = [_URL_BASE.format(zip_file) for zip_file in _ZIP_FILES]
 
 
 def load_image(file_path: pathlib.Path) -> PilImage:
@@ -60,8 +71,8 @@ class TextData(object):
     cs: List[ColorData]
 
     @classmethod
-    def from_list(cls, l: Tuple[int, int, List[str]]) -> "TextData":
-        x, y, cs = l
+    def from_text_tuple(cls, text_tuple: Tuple[int, int, List[str]]) -> "TextData":
+        x, y, cs = text_tuple
         assert isinstance(x, int) and isinstance(y, int)
         return cls(x=x, y=y, cs=[ColorData.from_string(c) for c in cs])
 
@@ -94,7 +105,9 @@ class PlaceData(object):
         objs = [
             ObjectData.from_string(s) for s in json_dict["obj"].strip(";").split(";")
         ]
-        texts = [[TextData.from_list(l) for l in ls] for ls in json_dict["text"]]
+        texts = [
+            [TextData.from_text_tuple(tt) for tt in tts] for tts in json_dict["text"]
+        ]
         return cls(objs=objs, texts=texts)
 
 
@@ -176,7 +189,10 @@ class PosterEraseDataset(ds.GeneratorBasedBuilder):
 
     @property
     def _manual_download_instructions(self) -> str:
-        breakpoint()
+        return (
+            "To use PosterErase dataset, you need to download the dataset "
+            "via [Alibaba Cloud](https://tianchi.aliyun.com/dataset/134810)."
+        )
 
     def _info(self) -> ds.DatasetInfo:
         masks = ds.Sequence(
@@ -232,12 +248,15 @@ class PosterEraseDataset(ds.GeneratorBasedBuilder):
         dir_path = os.path.expanduser(dl_manager.manual_dir)
 
         if not os.path.exists(dir_path):
-            raise FileNotFoundError()
+            raise FileNotFoundError(
+                "Make sure you have downloaded and placed the PosterErase dataset correctly. "
+                'Furthermore, you shoud check that a manual dir via `datasets.load_dataset("shunk031/PosterErase", data_dir=...)` '
+                "that include zip files from the downloaded files. "
+                f"Manual downloaded instructions: {self._manual_download_instructions}"
+            )
 
         return dl_manager.extract(
-            path_or_paths=[
-                os.path.join(dir_path, f"erase_{i}.zip") for i in range(1, 7)
-            ]
+            path_or_paths=[os.path.join(dir_path, zip_file) for zip_file in _ZIP_FILES]
         )
 
     def _split_generators(
@@ -245,7 +264,7 @@ class PosterEraseDataset(ds.GeneratorBasedBuilder):
     ) -> List[ds.SplitGenerator]:
         base_dir_paths = (
             self._download_from_hf(dl_manager)
-            if dl_manager.manual_dir
+            if dl_manager.download_config.token
             else self._download_from_local(dl_manager)
         )
         dir_paths = [pathlib.Path(dir_path) for dir_path in base_dir_paths]
