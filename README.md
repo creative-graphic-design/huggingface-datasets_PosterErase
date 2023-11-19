@@ -22,6 +22,8 @@ task_ids: []
 
 # Dataset Card for PosterErase
 
+[![CI](https://github.com/shunk031/huggingface-datasets_PosterErase/actions/workflows/ci.yaml/badge.svg)](https://github.com/shunk031/huggingface-datasets_PosterErase/actions/workflows/ci.yaml)
+
 ## Table of Contents
 - [Dataset Card Creation Guide](#dataset-card-creation-guide)
   - [Table of Contents](#table-of-contents)
